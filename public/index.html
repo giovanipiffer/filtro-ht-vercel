@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Filtro HT – Consulta</title>
+<style>
+body {
+    font-family: Arial;
+    padding: 20px;
+    background: #f4f4f4;
+}
+input, select {
+    padding: 8px;
+    margin: 5px 0;
+}
+button {
+    padding: 10px 20px;
+    background: #0070f3;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+#resultado {
+    margin-top: 20px;
+    background: white;
+    padding: 15px;
+}
+</style>
+</head>
+<body>
+
+<h2>Filtro HT – Consulta</h2>
+
+<label>Data:</label><br>
+<input type="date" id="data"><br>
+
+<label>Liga:</label><br>
+<input type="text" id="liga" placeholder="Ex: Italy Serie A"><br>
+
+<label>Odd mínima:</label><br>
+<input type="number" id="min_odds" value="1.80" step="0.01"><br><br>
+
+<button onclick="consultar()">Consultar</button>
+
+<div id="resultado"></div>
+
+<script>
+function consultar() {
+    const data = document.getElementById("data").value;
+    const liga = document.getElementById("liga").value;
+    const min_odds = document.getElementById("min_odds").value;
+    
+    const url = `/api/filtro?data=${data}&liga=${liga}&min_odds=${min_odds}`;
+    
+    fetch(url)
+        .then(r => r.json())
+        .then(res => {
+            document.getElementById("resultado").innerHTML =
+                "<pre>" + JSON.stringify(res, null, 2) + "</pre>";
+        });
+}
+</script>
+
+</body>
+</html>
