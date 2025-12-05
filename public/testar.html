@@ -1,260 +1,182 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Testar - Filtro HT</title>
-  <style>
-    :root{--bg:#f7f8fb;--card:#fff;--muted:#6b7280;--accent:#2563eb;--danger:#ef4444;--code:#0f1724}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:var(--bg);color:#111}
-    .wrap{max-width:1100px;margin:22px auto;padding:16px}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-    h1{margin:0;font-size:20px}
-    .small{font-size:13px;color:var(--muted)}
-    .card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(20,20,50,0.04);margin-bottom:12px}
-    textarea{width:100%;height:220px;padding:10px;font-family:monospace;font-size:13px;border:1px solid #e6e9f2;border-radius:8px}
-    input[type=text], input[type=password]{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9f2}
-    .row{display:flex;gap:12px}
-    .col{flex:1}
-    .btn{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer}
-    .btn.secondary{background:#6b7280}
-    .btn.ghost{background:transparent;color:#111;border:1px solid #e6e9f2}
-    .muted{color:var(--muted);font-size:13px}
-    pre{white-space:pre-wrap;background:var(--code);color:#e6eef8;padding:12px;border-radius:8px;overflow:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th,td{padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:left}
-    th{background:#fafbfe;font-weight:600}
-    .controls{display:flex;gap:8px;flex-wrap:wrap}
-    .right{margin-left:auto}
-    .inline{display:inline-block}
-    .label{font-weight:600;font-size:13px}
-    .note{font-size:12px;color:var(--muted);margin-top:6px}
-    .flex{display:flex;align-items:center;gap:8px}
-    .pill{background:#eef2ff;color:#0b66ff;padding:4px 8px;border-radius:999px;font-size:12px}
-    .danger{color:var(--danger);font-weight:600}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Testar — Filtro HT</h1>
-        <div class="small">Página de testes para enviar JSON e visualizar resposta da API</div>
-      </div>
-      <div class="right small muted">Rota: <span class="pill">/api/filtro</span></div>
-    </header>
-
-    <div class="card">
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
-        <div style="flex:1">
-          <label class="label">Endpoint da API</label>
-          <input id="endpoint" type="text" value="https://filtro-ht-vercel.vercel.app/api/filtro"/>
-          <div class="note">Informe a URL completa da sua API. Deixe como está se estiver rodando na mesma Vercel.</div>
-        </div>
-        <div style="width:260px">
-          <label class="label">API Token (opcional)</label>
-          <input id="apiToken" type="password" placeholder="Bearer token (opcional)" />
-          <div class="note">Se sua API exige Authorization, cole o token aqui. Não deixe tokens públicos.</div>
-        </div>
-      </div>
-
-      <label class="label">JSON de entrada (campo matches[] conforme spec)</label>
-      <textarea id="json" spellcheck="false" placeholder='Cole aqui o JSON que você envia para a API.
-Ex: {"matches":[{"id":"m1","home":{...},"away":{...}}]}'></textarea>
-
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center" class="controls">
-        <button id="btnValidate" class="btn ghost">Validar JSON</button>
-        <button id="btnSend" class="btn">Enviar para API</button>
-        <button id="btnSample" class="btn secondary">Carregar exemplo</button>
-        <button id="btnClear" class="btn secondary">Limpar</button>
-        <button id="btnLoadFile" class="btn ghost">Carregar arquivo .json</button>
-        <input id="loadFile" type="file" accept="application/json" style="display:none" />
-
-        <div style="margin-left:auto" class="muted">Resposta e logs aparecem abaixo.</div>
-      </div>
-    </div>
-
-    <div class="card row">
-      <div class="col">
-        <label class="label">Parsed / Preview</label>
-        <div id="preview" style="margin-top:8px;font-family:monospace;font-size:13px;color:#0f1724;max-height:320px;overflow:auto;padding:8px;background:#fff;border-radius:6px;border:1px solid #f0f3f8"></div>
-      </div>
-      <div class="col">
-        <label class="label">Resposta da API / Logs</label>
-        <pre id="response">(nenhuma requisição ainda)</pre>
-        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-          <button id="btnExport" class="btn ghost">Exportar CSV</button>
-          <button id="btnCopy" class="btn ghost">Copiar JSON</button>
-          <div id="status" class="muted" style="margin-left:auto">status: idle</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <label class="label">Tabela de resultados</label>
-      <div id="tableWrap" style="margin-top:8px;overflow:auto;max-height:260px">
-        <table id="resultsTable" style="display:none">
-          <thead>
-            <tr><th>ID</th><th>Probability</th><th>Odds</th><th>Reason</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <div id="noResults" class="muted">Nenhum resultado ainda — envie para a API.</div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const jsonEl = document.getElementById('json');
-    const preview = document.getElementById('preview');
-    const responseEl = document.getElementById('response');
-    const endpointEl = document.getElementById('endpoint');
-    const apiTokenEl = document.getElementById('apiToken');
-    const resultsTable = document.getElementById('resultsTable');
-    const resultsBody = resultsTable.querySelector('tbody');
-    const noResults = document.getElementById('noResults');
-    const statusEl = document.getElementById('status');
-
-    document.getElementById('btnSample').addEventListener('click', ()=>{
-      const sample = {
-        matches: [
-          { id: 'm1', home: { ht_goal_pct: 0.32, avg_shots_ht: 2.1, xG_ht: 0.15 }, away: { ht_goal_pct: 0.18, avg_shots_ht: 1.3, xG_ht: 0.05 }, league: 'Scottish Premiership', kickoff: '2025-12-04T20:00:00Z' },
-          { id: 'm2', home: { ht_goal_pct: 0.12, avg_shots_ht: 0.9, xG_ht: 0.02 }, away: { ht_goal_pct: 0.45, avg_shots_ht: 3.0, xG_ht: 0.35 }, league: 'Serie A', kickoff: '2025-12-05T18:30:00Z' }
-        ]
-      };
-      jsonEl.value = JSON.stringify(sample, null, 2);
-      renderPreview();
-    });
-
-    document.getElementById('btnClear').addEventListener('click', ()=>{
-      jsonEl.value=''; preview.innerText=''; responseEl.innerText='(limpo)'; clearTable(); statusEl.innerText='status: idle';
-    });
-
-    document.getElementById('btnValidate').addEventListener('click', ()=>{
-      renderPreview(true);
-    });
-
-    document.getElementById('btnLoadFile').addEventListener('click', ()=>{
-      document.getElementById('loadFile').click();
-    });
-
-    document.getElementById('loadFile').addEventListener('change', async (e)=>{
-      const f = e.target.files[0];
-      if(!f) return;
-      const text = await f.text();
-      jsonEl.value = text;
-      renderPreview();
-    });
-
-    function renderPreview(validateOnly=false){
-      const txt = jsonEl.value.trim();
-      if(!txt){ preview.innerText = '(vazio)'; return; }
-      try{
-        const obj = JSON.parse(txt);
-        const hasMatches = Array.isArray(obj.matches);
-        preview.innerHTML = '';
-        const info = document.createElement('div');
-        info.innerHTML = '<div class="muted">matches é array? ' + hasMatches + '</div>';
-        preview.appendChild(info);
-
-        if(hasMatches){
-          obj.matches.slice(0,50).forEach((m, i)=>{
-            const item = document.createElement('pre');
-            item.style.background='transparent';
-            item.style.padding='6px';
-            item.style.margin='6px 0';
-            item.textContent = (i+1)+') id: '+(m.id||'-')+' | league: '+(m.league||'-')+'
-'+JSON.stringify(m, null, 2);
-            preview.appendChild(item);
-          });
-        }
-        if(validateOnly) responseEl.innerText = 'JSON válido.';
-      }catch(err){
-        preview.innerText = 'JSON inválido: ' + err.message;
-        if(validateOnly) responseEl.innerText = 'Erro de validação: ' + err.message;
-      }
+<meta charset="UTF-8">
+<title>Testar — Filtro HT</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; background:#f7f7f7; }
+    h1 { margin-bottom: 5px; }
+    .card {
+        background: #fff; padding: 15px; border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 20px;
     }
+    textarea { width: 100%; height: 200px; font-family: monospace; }
+    button {
+        padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer;
+        font-size: 14px;
+    }
+    .btn-primary { background:#0066ff; color:white; }
+    .btn-secondary { background:#ddd; }
+    .btn-ghost { background:#eee; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .muted { color:#555; font-size:13px; }
+    pre { background:#111; color:#0f0; padding:10px; border-radius:6px; white-space:pre-wrap; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td { border:1px solid #ccc; padding:8px; text-align:left; }
+</style>
+</head>
 
-    function setStatus(txt){ statusEl.innerText = txt; }
+<body>
 
-    async function sendToApi(){
-      responseEl.innerText = 'Enviando...'; setStatus('status: sending');
-      const url = endpointEl.value.trim();
-      if(!url){ responseEl.innerText = 'Defina o endpoint primeiro.'; setStatus('status: error'); return; }
-      let bodyTxt = jsonEl.value.trim();
-      if(!bodyTxt){ responseEl.innerText = 'JSON vazio.'; setStatus('status: error'); return; }
-      try{
-        const bodyObj = JSON.parse(bodyTxt);
-        const headers = { 'Content-Type': 'application/json' };
-        const token = apiTokenEl.value.trim();
-        if(token) headers['Authorization'] = token.startsWith('Bearer') ? token : `Bearer ${token}`;
+<h1><strong>Testar — Filtro HT</strong></h1>
+<p class="muted">Página de testes para enviar JSON e visualizar resposta da API.</p>
 
-        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(bodyObj) });
+<div class="card">
+    <label><strong>Endpoint da API:</strong></label>
+    <input id="endpoint" style="width:100%;padding:8px;margin-top:6px;border-radius:6px;border:1px solid #ccc;"
+           value="https://filtro-ht-vercel.vercel.app/api/filtro">
+</div>
+
+<div class="card">
+    <label><strong>JSON de entrada:</strong></label>
+    <textarea id="json"></textarea>
+
+    <div class="row" style="margin-top:10px;">
+        <button class="btn-secondary" onclick="validateJSON()">Validar JSON</button>
+        <button class="btn-primary" onclick="sendToApi()">Enviar para API</button>
+        <button class="btn-secondary" onclick="loadSample()">Carregar exemplo</button>
+        <button class="btn-secondary" onclick="clearAll()">Limpar</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Parsed / Preview</h3>
+    <pre id="preview">(nenhum JSON processado ainda)</pre>
+</div>
+
+<div class="card">
+    <h3>Resposta da API / Logs</h3>
+    <pre id="response">(nenhuma requisição ainda)</pre>
+</div>
+
+<div class="card">
+    <h3>Resultados</h3>
+    <table id="resultsTable">
+        <thead>
+            <tr><th>#</th><th>ID</th><th>League</th><th>Probabilidade</th><th>Odds</th><th>Motivo</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+function validateJSON() {
+    const txt = document.getElementById("json").value.trim();
+    const preview = document.getElementById("preview");
+
+    try {
+        const obj = JSON.parse(txt);
+        preview.textContent = JSON.stringify(obj, null, 2);
+        return true;
+    } catch(e) {
+        preview.textContent = "ERRO DE JSON: " + e.message;
+        return false;
+    }
+}
+
+function loadSample() {
+    const example = {
+        matches: [
+            {
+              id: "m1",
+              home: { ht_goal_pct: 0.32, avg_shots_ht: 2.1, xG_ht: 0.15 },
+              away: { ht_goal_pct: 0.18, avg_shots_ht: 1.3, xG_ht: 0.05 },
+              league: "Scottish Premiership",
+              kickoff: "2025-12-04T20:00:00Z"
+            },
+            {
+              id: "m2",
+              home: { ht_goal_pct: 0.12, avg_shots_ht: 0.9, xG_ht: 0.02 },
+              away: { ht_goal_pct: 0.45, avg_shots_ht: 3.0, xG_ht: 0.35 },
+              league: "Serie A",
+              kickoff: "2025-12-05T18:30:00Z"
+            }
+        ]
+    };
+
+    document.getElementById("json").value = JSON.stringify(example, null, 2);
+    validateJSON();
+}
+
+function clearAll() {
+    document.getElementById("json").value = "";
+    document.getElementById("preview").textContent = "(nenhum JSON processado ainda)";
+    document.getElementById("response").textContent = "(nenhuma requisição ainda)";
+    document.querySelector("#resultsTable tbody").innerHTML = "";
+}
+
+async function sendToApi() {
+    if (!validateJSON()) return;
+
+    const endpoint = document.getElementById("endpoint").value.trim();
+    const jsonTxt = document.getElementById("json").value.trim();
+    const responseEl = document.getElementById("response");
+
+    responseEl.textContent = "Enviando...";
+
+    try {
+        const data = JSON.parse(jsonTxt);
+
+        const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
         const text = await res.text();
 
-        if(!res.ok){
-          responseEl.innerText = `Erro HTTP ${res.status}: ${res.statusText}
-
-${text}`;
-          setStatus('status: error');
-          return;
+        if (!res.ok) {
+            responseEl.textContent = "Erro HTTP " + res.status + ":\n" + text;
+            return;
         }
 
-        let data;
-        try{ data = JSON.parse(text); }
-        catch(e){ responseEl.innerText = 'Resposta não-JSON:
-' + text; setStatus('status: error'); return; }
+        let parsed;
+        try { parsed = JSON.parse(text); }
+        catch { responseEl.textContent = "Resposta não-JSON:\n" + text; return; }
 
-        responseEl.innerText = JSON.stringify(data, null, 2);
-        setStatus('status: ok');
-        renderResults(data);
+        responseEl.textContent = JSON.stringify(parsed, null, 2);
 
-      }catch(err){
-        responseEl.innerText = 'Erro: ' + err.message;
-        setStatus('status: error');
-      }
+        if (parsed.results) renderResults(parsed.results);
+
+    } catch(e) {
+        responseEl.textContent = "Erro: " + e.message;
     }
+}
 
-    function clearTable(){ resultsBody.innerHTML=''; resultsTable.style.display='none'; noResults.style.display='block'; }
+function renderResults(results) {
+    const tbody = document.querySelector("#resultsTable tbody");
+    tbody.innerHTML = "";
 
-    function renderResults(data){
-      clearTable();
-      if(!data || !Array.isArray(data.results) || data.results.length===0) return;
-      noResults.style.display='none';
-      resultsTable.style.display='table';
-      data.results.forEach(r => {
-        const tr = document.createElement('tr');
-        const id = document.createElement('td'); id.textContent = r.id || '-';
-        const p = document.createElement('td'); p.textContent = (typeof r.probability==='number')? r.probability.toFixed(3) : '-';
-        const odds = document.createElement('td'); odds.textContent = (typeof r.probability==='number' && r.probability>0)? (1/r.probability).toFixed(3) : '-';
-        const reason = document.createElement('td'); reason.textContent = r.reason || r.msg || '-';
-        tr.appendChild(id); tr.appendChild(p); tr.appendChild(odds); tr.appendChild(reason);
-        resultsBody.appendChild(tr);
-      });
-    }
+    results.forEach((m, i) => {
+        const tr = document.createElement("tr");
 
-    document.getElementById('btnSend').addEventListener('click', sendToApi);
-    document.getElementById('btnValidate').addEventListener('click', ()=>renderPreview(true));
-    document.getElementById('btnCopy').addEventListener('click', ()=>{ navigator.clipboard.writeText(responseEl.innerText); });
+        const prob = m.probability ?? 0;
+        const odds = prob > 0 ? (1 / prob).toFixed(2) : "-";
 
-    document.getElementById('btnExport').addEventListener('click', ()=>{
-      const rows = Array.from(resultsBody.querySelectorAll('tr')).map(tr=>Array.from(tr.children).map(td=>td.textContent));
-      if(!rows.length){ alert('Nenhum resultado para exportar'); return; }
-      const csv = ['id,probability,odds,reason', ...rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""') }"").join(','))].join('
-');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'results.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        tr.innerHTML = `
+            <td>${i+1}</td>
+            <td>${m.id || "-"}</td>
+            <td>${m.league || "-"}</td>
+            <td>${(prob * 100).toFixed(1)}%</td>
+            <td>${odds}</td>
+            <td>${m.reason || "-"}</td>
+        `;
+
+        tbody.appendChild(tr);
     });
+}
+</script>
 
-    // live preview debounce
-    let t; jsonEl.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(renderPreview, 400); });
-
-    // load example on first open
-    window.addEventListener('load', ()=>{
-      // do not overwrite if user already has content
-      if(!jsonEl.value.trim()) document.getElementById('btnSample').click();
-    });
-  </script>
 </body>
 </html>
