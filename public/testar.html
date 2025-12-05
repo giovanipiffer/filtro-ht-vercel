@@ -1,259 +1,125 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Testar — Filtro HT (visual)</title>
-<style>
-  :root{--bg:#f7f8fb;--card:#fff;--muted:#6b7280;--accent:#2563eb}
-  body{font-family:Inter,system-ui,Arial;margin:18px;background:var(--bg);color:#111}
-  .wrap{max-width:1100px;margin:0 auto}
-  .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(20,20,50,0.04);margin-bottom:12px}
-  h1{margin:0 0 6px 0;font-size:20px}
-  .muted{color:var(--muted);font-size:13px}
-  textarea{width:100%;height:160px;padding:10px;font-family:monospace;font-size:13px;border-radius:8px;border:1px solid #e6e9f2}
-  input[type=text]{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9f2}
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
-  button{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer}
-  button.ghost{background:#eef2f7;color:#111;border:1px solid #e6e9f2}
-  button.sec{background:#6b7280}
-  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
-  th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left}
-  th{background:#fafbfe;font-weight:700}
-  .small{font-size:12px;color:var(--muted)}
-  .right{margin-left:auto}
-  .badge{background:#eef2ff;color:#0b66ff;padding:4px 8px;border-radius:999px;font-size:12px}
-  .nowrap{white-space:nowrap}
-  .result-cell{font-weight:600}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <header class="card">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="flex:1">
-          <h1>Testar — Filtro HT (visual)</h1>
-          <div class="muted">Carregue o JSON com <code>matches[]</code> — os jogos aparecerão na tabela abaixo.</div>
-        </div>
-        <div class="small">Rota: <span class="badge">/api/filtro</span></div>
-      </div>
-    </header>
+import React, { useState } from "react";
 
-    <div class="card">
-      <label class="small"><strong>Endpoint</strong></label>
-      <input id="endpoint" type="text" value="https://filtro-ht-vercel.vercel.app/api/filtro" />
-      <div style="height:8px"></div>
+export default function TestarFiltroHT() {
+  // data fixa conforme pedido (05 de dezembro de 2025)
+  const [date, setDate] = useState("2025-12-05");
+  const [matches, setMatches] = useState(null);
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [log, setLog] = useState("");
+  const [last, setLast] = useState(5); // default safer
 
-      <label class="small"><strong>JSON de entrada (matches[])</strong></label>
-      <textarea id="json" placeholder='Cole aqui {"matches":[{...}]}'></textarea>
-
-      <div class="row">
-        <button id="btnValidate" class="ghost">Validar JSON</button>
-        <button id="btnParse" class="ghost">Parsear jogos</button>
-        <button id="btnSendSelected">Enviar selecionados</button>
-        <button id="btnSendAll" class="sec">Enviar todos</button>
-        <button id="btnSample" class="ghost">Carregar exemplo</button>
-        <button id="btnClear" class="ghost">Limpar</button>
-        <div class="right small muted">Resposta e logs aparecem abaixo.</div>
-      </div>
-    </div>
-
-    <div class="card" id="matchesCard">
-      <label class="small"><strong>Matches (jogos)</strong></label>
-      <div class="small" style="margin-top:6px">Selecione jogos e clique <strong>Enviar selecionados</strong> ou use <strong>Enviar todos</strong>.</div>
-
-      <table id="matchesTable" style="margin-top:8px">
-        <thead>
-          <tr>
-            <th style="width:30px"><input id="chkAll" type="checkbox" /></th>
-            <th>#</th>
-            <th>ID</th>
-            <th>League</th>
-            <th>Kickoff</th>
-            <th>Home HT%</th>
-            <th>Away HT%</th>
-            <th class="nowrap">Actions</th>
-            <th>Resultado</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div id="noMatches" class="small muted" style="margin-top:8px">Nenhum jogo parseado ainda — clique em <em>Parsear jogos</em> ou carregue o exemplo.</div>
-    </div>
-
-    <div class="card">
-      <label class="small"><strong>Resposta da API / Logs</strong></label>
-      <pre id="response" style="min-height:80px">(nenhuma requisição ainda)</pre>
-    </div>
-  </div>
-
-<script>
-/* --- helpers --- */
-const jsonEl = document.getElementById('json');
-const endpointEl = document.getElementById('endpoint');
-const responseEl = document.getElementById('response');
-const matchesTableBody = document.querySelector('#matchesTable tbody');
-const noMatches = document.getElementById('noMatches');
-const chkAll = document.getElementById('chkAll');
-
-let currentMatches = []; // array of match objects parsed from input
-let lastResults = {};    // map id -> result
-
-function safeParse(txt){ try { return JSON.parse(txt); } catch(e){ return null; } }
-
-/* --- UI actions --- */
-document.getElementById('btnSample').addEventListener('click', ()=>{
-  const sample = {
-    matches: [
-      { id: 'm1', home: { ht_goal_pct:0.32, avg_shots_ht:2.1, xG_ht:0.15 }, away:{ ht_goal_pct:0.18, avg_shots_ht:1.3, xG_ht:0.05 }, league:'Scottish Premiership', kickoff:'2025-12-04T20:00:00Z' },
-      { id: 'm2', home: { ht_goal_pct:0.12, avg_shots_ht:0.9, xG_ht:0.02 }, away:{ ht_goal_pct:0.45, avg_shots_ht:3.0, xG_ht:0.35 }, league:'Serie A', kickoff:'2025-12-05T18:30:00Z' }
-    ]
-  };
-  jsonEl.value = JSON.stringify(sample, null, 2);
-  parseMatchesAndRender();
-});
-
-document.getElementById('btnValidate').addEventListener('click', ()=>{
-  const ok = !!safeParse(jsonEl.value);
-  responseEl.textContent = ok ? 'JSON válido.' : 'JSON inválido. Corrija e tente novamente.';
-});
-
-document.getElementById('btnClear').addEventListener('click', ()=>{
-  jsonEl.value=''; currentMatches=[]; lastResults={}; renderMatches(); responseEl.textContent='(limpo)';
-});
-
-document.getElementById('btnParse').addEventListener('click', parseMatchesAndRender);
-
-chkAll.addEventListener('change', ()=>{
-  const checked = chkAll.checked;
-  document.querySelectorAll('#matchesTable tbody input[type=checkbox]').forEach(cb => cb.checked = checked);
-});
-
-document.getElementById('btnSendAll').addEventListener('click', ()=> sendMatches(currentMatches));
-document.getElementById('btnSendSelected').addEventListener('click', ()=>{
-  const selectedIds = Array.from(document.querySelectorAll('#matchesTable tbody input[type=checkbox]'))
-    .filter(cb => cb.checked)
-    .map(cb => cb.datasetId);
-  const selected = currentMatches.filter(m => selectedIds.includes(m.id));
-  if(selected.length===0){ alert('Nenhum jogo selecionado'); return; }
-  sendMatches(selected);
-});
-
-/* --- parse and render matches --- */
-function parseMatchesAndRender(){
-  const parsed = safeParse(jsonEl.value);
-  if(!parsed || !Array.isArray(parsed.matches)){ responseEl.textContent = 'JSON inválido ou matches[] ausente.'; return; }
-  currentMatches = parsed.matches.map((m, i) => {
-    // normalize fields we will show
-    return {
-      _idx: i,
-      id: m.id || (`_${i}`),
-      league: m.league || '-',
-      kickoff: m.kickoff || '-',
-      home_ht: (m.home && typeof m.home.ht_goal_pct === 'number') ? m.home.ht_goal_pct : (m.home && m.home.ht_goal_pct ? Number(m.home.ht_goal_pct) : '-'),
-      away_ht: (m.away && typeof m.away.ht_goal_pct === 'number') ? m.away.ht_goal_pct : (m.away && m.away.ht_goal_pct ? Number(m.away.ht_goal_pct) : '-'),
-      raw: m
-    };
-  });
-  renderMatches();
-}
-
-function renderMatches(){
-  matchesTableBody.innerHTML = '';
-  lastResults = lastResults || {};
-  if(!currentMatches || currentMatches.length===0){ noMatches.style.display='block'; return; }
-  noMatches.style.display='none';
-  currentMatches.forEach((m, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="checkbox" data-id="${escapeHtml(m.id)}"></td>
-      <td>${i+1}</td>
-      <td>${escapeHtml(m.id)}</td>
-      <td>${escapeHtml(m.league)}</td>
-      <td class="nowrap">${escapeHtml(m.kickoff)}</td>
-      <td>${typeof m.home_ht === 'number' ? (m.home_ht*100).toFixed(1)+'%' : '-'}</td>
-      <td>${typeof m.away_ht === 'number' ? (m.away_ht*100).toFixed(1)+'%' : '-'}</td>
-      <td class="nowrap">
-        <button class="ghost" data-action="send-one" data-id="${escapeHtml(m.id)}">Enviar</button>
-      </td>
-      <td class="result-cell" id="res-${escapeHtml(m.id)}">${renderResultCell(m.id)}</td>
-    `;
-    matchesTableBody.appendChild(tr);
-  });
-  // attach checkbox data and action handlers
-  document.querySelectorAll('#matchesTable tbody input[type=checkbox]').forEach(cb => { cb.datasetId = cb.getAttribute('data-id'); });
-  document.querySelectorAll('#matchesTable tbody button[data-action=send-one]').forEach(btn => {
-    btn.addEventListener('click', ()=> {
-      const id = btn.getAttribute('data-id');
-      const match = currentMatches.find(x => x.id === id);
-      if(match) sendMatches([match]);
-    });
-  });
-}
-
-/* --- send matches (one or many) --- */
-async function sendMatches(matchesToSend){
-  if(!matchesToSend || matchesToSend.length===0) return;
-  const endpoint = endpointEl.value.trim();
-  if(!endpoint){ alert('Defina o endpoint primeiro'); return; }
-
-  // build payload in same shape as original: matches: [ raw ... ]
-  const payload = { matches: matchesToSend.map(m => m.raw) };
-
-  responseEl.textContent = 'Enviando ' + matchesToSend.length + ' jogo(s)...';
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const text = await res.text();
-
-    if(!res.ok){ responseEl.textContent = `Erro HTTP ${res.status}: ${res.statusText}\n\n${text}`; return; }
-
-    let data;
-    try { data = JSON.parse(text); } catch(e){ responseEl.textContent = 'Resposta não-JSON:\n' + text; return; }
-
-    responseEl.textContent = JSON.stringify(data, null, 2);
-
-    // se results for array, sincroniza com a tabela
-    if(Array.isArray(data.results)){
-      data.results.forEach(r => {
-        lastResults[r.id] = r;
-      });
-      // atualizar células de resultado
-      for(const id in lastResults) {
-        const el = document.getElementById('res-' + id);
-        if(el) el.innerHTML = formatResultHTML(lastResults[id]);
+  async function handleFetchMatches() {
+    setLoading(true);
+    setLog(`Buscando jogos para ${date} (last=${last}) ...`);
+    try {
+      const res = await fetch(`/api/filtro?date=${date}&last=${last}`);
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Erro ao buscar jogos: ${res.status} ${txt}`);
       }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        setLog("Resposta da API não é um array — verifique o endpoint");
+        setMatches(null);
+        setResults(null);
+        setLoading(false);
+        return;
+      }
+      setMatches(data);
+      if (data.length === 0) {
+        setLog("Nenhum jogo encontrado para essa data.");
+        setResults([]);
+      } else {
+        setLog(`Encontrados ${data.length} partidas — mostrando ordenadas por score`);
+        // já vem com _filter do backend, mas recalculamos por segurança
+        const out = data.map((m) => m).sort((a, b) => (b._filter?.score ?? 0) - (a._filter?.score ?? 0));
+        setResults(out);
+      }
+    } catch (e) {
+      setLog(String(e));
+      setMatches(null);
+      setResults(null);
+    } finally {
+      setLoading(false);
     }
-  } catch(e){
-    responseEl.textContent = 'Erro: ' + e.message;
   }
-}
 
-/* --- small helpers for results rendering --- */
-function formatResultHTML(r){
-  if(!r) return '-';
-  const prob = (typeof r.probability === 'number') ? (r.probability*100).toFixed(1) + '%' : (r.probability ?? '-');
-  const odds = (typeof r.probability === 'number' && r.probability>0) ? (1 / r.probability).toFixed(2) : '-';
-  const reason = r.reason ? escapeHtml(r.reason) : (r.msg ? escapeHtml(r.msg) : '-');
-  return `<div>${prob} &nbsp;<small>(${odds})</small></div><div class="small">${reason}</div>`;
-}
-function renderResultCell(id){ const r = lastResults[id]; return r ? formatResultHTML(r) : '-'; }
-
-/* --- utility --- */
-function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
-/* --- page init: if json empty, load sample but don't auto-send --- */
-window.addEventListener('load', ()=>{
-  if(!jsonEl.value.trim()) {
-    // do not auto-send, only preload sample
-    document.getElementById('btnSample').click();
-  } else {
-    parseMatchesAndRender();
+  function downloadResults() {
+    if (!results) return;
+    const blob = new Blob([JSON.stringify(results, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `filtro_ht_results_${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
-});
-</script>
-</body>
-</html>
+
+  return (
+    <div style={{ maxWidth: 900, margin: "18px auto", fontFamily: "Inter, Arial" }}>
+      <h1>Testar — Filtro HT</h1>
+
+      <div style={{ padding: 12, border: "1px solid #e6e6e6", borderRadius: 8, marginBottom: 12 }}>
+        <label style={{ display: "block", marginBottom: 6 }}>Data</label>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <label style={{ marginLeft: 12 }}> Últimos (last)</label>
+        <select value={last} onChange={(e) => setLast(Number(e.target.value))} style={{ marginLeft: 6 }}>
+          <option value={3}>3</option>
+          <option value={5}>5</option>
+          <option value={8}>8</option>
+          <option value={10}>10</option>
+        </select>
+
+        <div style={{ marginTop: 10 }}>
+          <button onClick={handleFetchMatches} disabled={loading} style={{ marginRight: 8 }}>
+            {loading ? "Buscando..." : "Buscar jogos"}
+          </button>
+          <button onClick={downloadResults} disabled={!results || results.length === 0}>
+            Baixar JSON
+          </button>
+        </div>
+
+        <div style={{ marginTop: 8, color: "#666" }}>Log: {log}</div>
+      </div>
+
+      <div>
+        <h2>Resultados</h2>
+        {!results && <div style={{ color: "#666" }}>Clique em "Buscar jogos" para começar.</div>}
+
+        {results && results.length === 0 && <div>Nenhum jogo nesta data.</div>}
+
+        {results && results.length > 0 && (
+          <div>
+            <div style={{ marginBottom: 8, fontSize: 14 }}>Total: {results.length}</div>
+            <div>
+              {results.map((m) => (
+                <div key={m.id} style={{ border: "1px solid #eee", padding: 10, marginBottom: 8, borderRadius: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{m.home?.name ?? "Home"} × {m.away?.name ?? "Away"}</div>
+                      <div style={{ color: "#666", fontSize: 12 }}>
+                        pct(max): {Number(m._filter?.derived?.max_pct ?? 0).toFixed(3)} • shots total: {Number(m._filter?.derived?.total_shots ?? 0).toFixed(2)} • avg xG: {Number(m._filter?.derived?.avg_xg ?? 0).toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700, color: m._filter?.pass ? "#059669" : "#ef4444" }}>{m._filter?.pass ? "PASS" : "FAIL"}</div>
+                      <div style={{ fontSize: 12 }}>Score: {Number(m._filter?.score ?? 0).toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: 13 }}>
+                    <strong>Home</strong>: pctHT {Number(m.home?.ht_goal_pct ?? 0).toFixed(3)} • shotsHT {Number(m.home?.avg_shots_ht ?? 0).toFixed(2)} • xGht {Number(m.home?.xG_ht ?? 0).toFixed(2)}
+                    <br />
+                    <strong>Away</strong>: pctHT {Number(m.away?.ht_goal_pct ?? 0).toFixed(3)} • shotsHT {Number(m.away?.avg_shots_ht ?? 0).toFixed(2)} • xGht {Number(m.away?.xG_ht ?? 0).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
