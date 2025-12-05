@@ -1,125 +1,100 @@
-import React, { useState } from "react";
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Testar — Filtro HT</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;max-width:980px;margin:24px auto;padding:12px}
+    .card{border:1px solid #ddd;padding:12px;border-radius:8px;margin-bottom:10px}
+    .pass{color:green;font-weight:700}
+    .fail{color:#c00;font-weight:700}
+    pre{white-space:pre-wrap;background:#f7f7f7;padding:10px;border-radius:6px;overflow:auto}
+    button{padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
+    input[type=date]{padding:6px;border-radius:6px;border:1px solid #ccc}
+  </style>
+</head>
+<body>
+  <h1>Testar — Filtro HT</h1>
 
-export default function TestarFiltroHT() {
-  // data fixa conforme pedido (05 de dezembro de 2025)
-  const [date, setDate] = useState("2025-12-05");
-  const [matches, setMatches] = useState(null);
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [log, setLog] = useState("");
-  const [last, setLast] = useState(5); // default safer
-
-  async function handleFetchMatches() {
-    setLoading(true);
-    setLog(`Buscando jogos para ${date} (last=${last}) ...`);
-    try {
-      const res = await fetch(`/api/filtro?date=${date}&last=${last}`);
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Erro ao buscar jogos: ${res.status} ${txt}`);
-      }
-      const data = await res.json();
-      if (!Array.isArray(data)) {
-        setLog("Resposta da API não é um array — verifique o endpoint");
-        setMatches(null);
-        setResults(null);
-        setLoading(false);
-        return;
-      }
-      setMatches(data);
-      if (data.length === 0) {
-        setLog("Nenhum jogo encontrado para essa data.");
-        setResults([]);
-      } else {
-        setLog(`Encontrados ${data.length} partidas — mostrando ordenadas por score`);
-        // já vem com _filter do backend, mas recalculamos por segurança
-        const out = data.map((m) => m).sort((a, b) => (b._filter?.score ?? 0) - (a._filter?.score ?? 0));
-        setResults(out);
-      }
-    } catch (e) {
-      setLog(String(e));
-      setMatches(null);
-      setResults(null);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function downloadResults() {
-    if (!results) return;
-    const blob = new Blob([JSON.stringify(results, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `filtro_ht_results_${date}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  return (
-    <div style={{ maxWidth: 900, margin: "18px auto", fontFamily: "Inter, Arial" }}>
-      <h1>Testar — Filtro HT</h1>
-
-      <div style={{ padding: 12, border: "1px solid #e6e6e6", borderRadius: 8, marginBottom: 12 }}>
-        <label style={{ display: "block", marginBottom: 6 }}>Data</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <label style={{ marginLeft: 12 }}> Últimos (last)</label>
-        <select value={last} onChange={(e) => setLast(Number(e.target.value))} style={{ marginLeft: 6 }}>
-          <option value={3}>3</option>
-          <option value={5}>5</option>
-          <option value={8}>8</option>
-          <option value={10}>10</option>
-        </select>
-
-        <div style={{ marginTop: 10 }}>
-          <button onClick={handleFetchMatches} disabled={loading} style={{ marginRight: 8 }}>
-            {loading ? "Buscando..." : "Buscar jogos"}
-          </button>
-          <button onClick={downloadResults} disabled={!results || results.length === 0}>
-            Baixar JSON
-          </button>
-        </div>
-
-        <div style={{ marginTop: 8, color: "#666" }}>Log: {log}</div>
-      </div>
-
-      <div>
-        <h2>Resultados</h2>
-        {!results && <div style={{ color: "#666" }}>Clique em "Buscar jogos" para começar.</div>}
-
-        {results && results.length === 0 && <div>Nenhum jogo nesta data.</div>}
-
-        {results && results.length > 0 && (
-          <div>
-            <div style={{ marginBottom: 8, fontSize: 14 }}>Total: {results.length}</div>
-            <div>
-              {results.map((m) => (
-                <div key={m.id} style={{ border: "1px solid #eee", padding: 10, marginBottom: 8, borderRadius: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{m.home?.name ?? "Home"} × {m.away?.name ?? "Away"}</div>
-                      <div style={{ color: "#666", fontSize: 12 }}>
-                        pct(max): {Number(m._filter?.derived?.max_pct ?? 0).toFixed(3)} • shots total: {Number(m._filter?.derived?.total_shots ?? 0).toFixed(2)} • avg xG: {Number(m._filter?.derived?.avg_xg ?? 0).toFixed(2)}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 700, color: m._filter?.pass ? "#059669" : "#ef4444" }}>{m._filter?.pass ? "PASS" : "FAIL"}</div>
-                      <div style={{ fontSize: 12 }}>Score: {Number(m._filter?.score ?? 0).toFixed(2)}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 8, fontSize: 13 }}>
-                    <strong>Home</strong>: pctHT {Number(m.home?.ht_goal_pct ?? 0).toFixed(3)} • shotsHT {Number(m.home?.avg_shots_ht ?? 0).toFixed(2)} • xGht {Number(m.home?.xG_ht ?? 0).toFixed(2)}
-                    <br />
-                    <strong>Away</strong>: pctHT {Number(m.away?.ht_goal_pct ?? 0).toFixed(3)} • shotsHT {Number(m.away?.avg_shots_ht ?? 0).toFixed(2)} • xGht {Number(m.away?.xG_ht ?? 0).toFixed(2)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+  <div class="card">
+    <label>Data: <input id="date" type="date" value="2025-12-05"/></label>
+    <label style="margin-left:12px">Últimos (last):
+      <select id="last">
+        <option value="3">3</option>
+        <option value="5" selected>5</option>
+        <option value="8">8</option>
+        <option value="10">10</option>
+      </select>
+    </label>
+    <div style="margin-top:10px">
+      <button id="btnFetch">Buscar jogos</button>
+      <button id="btnClear">Limpar</button>
+      <button id="btnRaw" style="margin-left:8px">Ver JSON Cru</button>
     </div>
-  );
-}
+    <div id="log" style="margin-top:8px;color:#555"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    const btn = document.getElementById('btnFetch');
+    const btnClear = document.getElementById('btnClear');
+    const btnRaw = document.getElementById('btnRaw');
+    const resultsEl = document.getElementById('results');
+    const logEl = document.getElementById('log');
+
+    async function fetchAndRender() {
+      const date = document.getElementById('date').value;
+      const last = document.getElementById('last').value;
+      if (!date) { alert('Escolha uma data'); return; }
+      logEl.textContent = `Buscando ${date} (last=${last}) ...`;
+      resultsEl.innerHTML = '';
+      try {
+        const res = await fetch(`/api/filtro?date=${date}&last=${last}`);
+        if (!res.ok) {
+          const txt = await res.text();
+          logEl.textContent = 'Erro: ' + res.status + ' — ' + txt;
+          return;
+        }
+        const data = await res.json();
+        logEl.textContent = `Retornou ${Array.isArray(data) ? data.length : 0} itens`;
+        if (!Array.isArray(data) || data.length === 0) {
+          resultsEl.innerHTML = '<div class="card">Nenhum jogo encontrado para essa data.</div>';
+          return;
+        }
+        data.forEach(m => {
+          const pass = m._filter?.pass;
+          const html = `
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-weight:700">${m.home?.name || 'Home'} × ${m.away?.name || 'Away'}</div>
+                  <div style="color:#666;font-size:13px">pct(max): ${Number(m._filter?.derived?.max_pct||0).toFixed(3)} • shots: ${Number(m._filter?.derived?.total_shots||0).toFixed(2)} • xG: ${Number(m._filter?.derived?.avg_xg||0).toFixed(2)}</div>
+                </div>
+                <div style="text-align:right">
+                  <div class="${pass ? 'pass' : 'fail'}">${pass ? 'PASS' : 'FAIL'}</div>
+                  <div style="font-size:12px">Score: ${Number(m._filter?.score||0).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+          resultsEl.insertAdjacentHTML('beforeend', html);
+        });
+      } catch (e) {
+        logEl.textContent = 'Erro: ' + e;
+      }
+    }
+
+    btn.addEventListener('click', fetchAndRender);
+    btnClear.addEventListener('click', () => { resultsEl.innerHTML = ''; logEl.textContent = ''; });
+    btnRaw.addEventListener('click', async () => {
+      const date = document.getElementById('date').value;
+      const last = document.getElementById('last').value;
+      const res = await fetch(`/api/filtro?date=${date}&last=${last}`);
+      const txt = await res.text();
+      const win = window.open("", "_blank");
+      win.document.write("<pre>" + txt.replace(/</g, "&lt;") + "</pre>");
+    });
+  </script>
+</body>
+</html>
