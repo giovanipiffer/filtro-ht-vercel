@@ -5,54 +5,102 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Testar - Filtro HT</title>
   <style>
-    body{font-family:Inter,system-ui,Segoe UI,Arial;margin:20px;background:#f7f8fb;color:#111}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-    textarea{width:100%;height:260px;padding:10px;font-family:monospace;font-size:13px;border:1px solid #d6d9e6;border-radius:8px}
-    input[type=text]{width:100%;padding:8px;border-radius:8px;border:1px solid #d6d9e6}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .card{background:white;padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(20,20,50,0.04)}
-    button{padding:8px 12px;border-radius:8px;border:0;background:#2563eb;color:white;cursor:pointer}
-    button.secondary{background:#6b7280}
-    pre{white-space:pre-wrap;background:#0f1724;color:#e6eef8;padding:12px;border-radius:8px;overflow:auto}
-    label{font-weight:600;font-size:13px}
-    .small{font-size:12px;color:#6b7280}
+    :root{--bg:#f7f8fb;--card:#fff;--muted:#6b7280;--accent:#2563eb;--danger:#ef4444;--code:#0f1724}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:var(--bg);color:#111}
+    .wrap{max-width:1100px;margin:22px auto;padding:16px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    h1{margin:0;font-size:20px}
+    .small{font-size:13px;color:var(--muted)}
+    .card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(20,20,50,0.04);margin-bottom:12px}
+    textarea{width:100%;height:220px;padding:10px;font-family:monospace;font-size:13px;border:1px solid #e6e9f2;border-radius:8px}
+    input[type=text], input[type=password]{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9f2}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    .btn{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer}
+    .btn.secondary{background:#6b7280}
+    .btn.ghost{background:transparent;color:#111;border:1px solid #e6e9f2}
+    .muted{color:var(--muted);font-size:13px}
+    pre{white-space:pre-wrap;background:var(--code);color:#e6eef8;padding:12px;border-radius:8px;overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:left}
+    th{background:#fafbfe;font-weight:600}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .right{margin-left:auto}
+    .inline{display:inline-block}
+    .label{font-weight:600;font-size:13px}
+    .note{font-size:12px;color:var(--muted);margin-top:6px}
+    .flex{display:flex;align-items:center;gap:8px}
+    .pill{background:#eef2ff;color:#0b66ff;padding:4px 8px;border-radius:999px;font-size:12px}
+    .danger{color:var(--danger);font-weight:600}
   </style>
 </head>
 <body>
-  <header>
-    <h1 style="margin:0;font-size:18px">Testar — Filtro HT</h1>
-    <div class="small">Página de testes para enviar JSON e visualizar resposta da API</div>
-  </header>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Testar — Filtro HT</h1>
+        <div class="small">Página de testes para enviar JSON e visualizar resposta da API</div>
+      </div>
+      <div class="right small muted">Rota: <span class="pill">/api/filtro</span></div>
+    </header>
 
-  <div class="card">
-    <label for="endpoint">Endpoint da API (ex: https://seu-host.com/api/filtro)</label>
-    <input id="endpoint" type="text" placeholder="https://filtro-ht-vercel.vercel.app/api/filtro" value="https://filtro-ht-vercel.vercel.app/api/filtro" />
-    <div style="height:10px"></div>
-    <label for="json">JSON de entrada (campo matches[] conforme spec)</label>
-    <textarea id="json" spellcheck="false" placeholder='Cole aqui o JSON que você envia para a API. \nEx:\n{"matches":[{"id":"m1","home":{"ht_goal_pct":0.32,"avg_shots_ht":2.1,"xG_ht":0.15},"away":{...}}]}'></textarea>
-
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button id="btnValidate">Validar JSON</button>
-      <button id="btnSend">Enviar para API</button>
-      <button id="btnSample" class="secondary">Carregar exemplo</button>
-      <button id="btnClear" class="secondary">Limpar</button>
-    </div>
-
-    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-      <input id="saveFile" type="file" accept="application/json" style="display:none" />
-      <button id="btnLoadFile" class="secondary">Carregar arquivo .json</button>
-      <div class="small">Resposta e logs aparecem abaixo.</div>
-    </div>
-  </div>
-
-  <div class="grid" style="margin-top:12px">
     <div class="card">
-      <label>Parsed / Preview</label>
-      <div id="preview" style="margin-top:8px;font-family:monospace;font-size:13px;color:#0f1724;max-height:320px;overflow:auto"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <div style="flex:1">
+          <label class="label">Endpoint da API</label>
+          <input id="endpoint" type="text" value="https://filtro-ht-vercel.vercel.app/api/filtro"/>
+          <div class="note">Informe a URL completa da sua API. Deixe como está se estiver rodando na mesma Vercel.</div>
+        </div>
+        <div style="width:260px">
+          <label class="label">API Token (opcional)</label>
+          <input id="apiToken" type="password" placeholder="Bearer token (opcional)" />
+          <div class="note">Se sua API exige Authorization, cole o token aqui. Não deixe tokens públicos.</div>
+        </div>
+      </div>
+
+      <label class="label">JSON de entrada (campo matches[] conforme spec)</label>
+      <textarea id="json" spellcheck="false" placeholder='Cole aqui o JSON que você envia para a API.
+Ex: {"matches":[{"id":"m1","home":{...},"away":{...}}]}'></textarea>
+
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center" class="controls">
+        <button id="btnValidate" class="btn ghost">Validar JSON</button>
+        <button id="btnSend" class="btn">Enviar para API</button>
+        <button id="btnSample" class="btn secondary">Carregar exemplo</button>
+        <button id="btnClear" class="btn secondary">Limpar</button>
+        <button id="btnLoadFile" class="btn ghost">Carregar arquivo .json</button>
+        <input id="loadFile" type="file" accept="application/json" style="display:none" />
+
+        <div style="margin-left:auto" class="muted">Resposta e logs aparecem abaixo.</div>
+      </div>
     </div>
+
+    <div class="card row">
+      <div class="col">
+        <label class="label">Parsed / Preview</label>
+        <div id="preview" style="margin-top:8px;font-family:monospace;font-size:13px;color:#0f1724;max-height:320px;overflow:auto;padding:8px;background:#fff;border-radius:6px;border:1px solid #f0f3f8"></div>
+      </div>
+      <div class="col">
+        <label class="label">Resposta da API / Logs</label>
+        <pre id="response">(nenhuma requisição ainda)</pre>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button id="btnExport" class="btn ghost">Exportar CSV</button>
+          <button id="btnCopy" class="btn ghost">Copiar JSON</button>
+          <div id="status" class="muted" style="margin-left:auto">status: idle</div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
-      <label>Resposta da API / Logs</label>
-      <pre id="response">(nenhuma requisição ainda)</pre>
+      <label class="label">Tabela de resultados</label>
+      <div id="tableWrap" style="margin-top:8px;overflow:auto;max-height:260px">
+        <table id="resultsTable" style="display:none">
+          <thead>
+            <tr><th>ID</th><th>Probability</th><th>Odds</th><th>Reason</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="noResults" class="muted">Nenhum resultado ainda — envie para a API.</div>
+      </div>
     </div>
   </div>
 
@@ -61,24 +109,17 @@
     const preview = document.getElementById('preview');
     const responseEl = document.getElementById('response');
     const endpointEl = document.getElementById('endpoint');
+    const apiTokenEl = document.getElementById('apiToken');
+    const resultsTable = document.getElementById('resultsTable');
+    const resultsBody = resultsTable.querySelector('tbody');
+    const noResults = document.getElementById('noResults');
+    const statusEl = document.getElementById('status');
 
     document.getElementById('btnSample').addEventListener('click', ()=>{
       const sample = {
         matches: [
-          {
-            id: 'm1',
-            home: { ht_goal_pct: 0.32, avg_shots_ht: 2.1, xG_ht: 0.15 },
-            away: { ht_goal_pct: 0.18, avg_shots_ht: 1.3, xG_ht: 0.05 },
-            league: 'Scottish Premiership',
-            kickoff: '2025-12-04T20:00:00Z'
-          },
-          {
-            id: 'm2',
-            home: { ht_goal_pct: 0.12, avg_shots_ht: 0.9, xG_ht: 0.02 },
-            away: { ht_goal_pct: 0.45, avg_shots_ht: 3.0, xG_ht: 0.35 },
-            league: 'Serie A',
-            kickoff: '2025-12-05T18:30:00Z'
-          }
+          { id: 'm1', home: { ht_goal_pct: 0.32, avg_shots_ht: 2.1, xG_ht: 0.15 }, away: { ht_goal_pct: 0.18, avg_shots_ht: 1.3, xG_ht: 0.05 }, league: 'Scottish Premiership', kickoff: '2025-12-04T20:00:00Z' },
+          { id: 'm2', home: { ht_goal_pct: 0.12, avg_shots_ht: 0.9, xG_ht: 0.02 }, away: { ht_goal_pct: 0.45, avg_shots_ht: 3.0, xG_ht: 0.35 }, league: 'Serie A', kickoff: '2025-12-05T18:30:00Z' }
         ]
       };
       jsonEl.value = JSON.stringify(sample, null, 2);
@@ -86,7 +127,7 @@
     });
 
     document.getElementById('btnClear').addEventListener('click', ()=>{
-      jsonEl.value=''; preview.innerText=''; responseEl.innerText='(limpo)';
+      jsonEl.value=''; preview.innerText=''; responseEl.innerText='(limpo)'; clearTable(); statusEl.innerText='status: idle';
     });
 
     document.getElementById('btnValidate').addEventListener('click', ()=>{
@@ -94,10 +135,10 @@
     });
 
     document.getElementById('btnLoadFile').addEventListener('click', ()=>{
-      document.getElementById('saveFile').click();
+      document.getElementById('loadFile').click();
     });
 
-    document.getElementById('saveFile').addEventListener('change', async (e)=>{
+    document.getElementById('loadFile').addEventListener('change', async (e)=>{
       const f = e.target.files[0];
       if(!f) return;
       const text = await f.text();
@@ -110,11 +151,10 @@
       if(!txt){ preview.innerText = '(vazio)'; return; }
       try{
         const obj = JSON.parse(txt);
-        // quick basic validation
         const hasMatches = Array.isArray(obj.matches);
         preview.innerHTML = '';
         const info = document.createElement('div');
-        info.innerHTML = '<div class="small">matches é array? ' + hasMatches + '</div>';
+        info.innerHTML = '<div class="muted">matches é array? ' + hasMatches + '</div>';
         preview.appendChild(info);
 
         if(hasMatches){
@@ -123,7 +163,8 @@
             item.style.background='transparent';
             item.style.padding='6px';
             item.style.margin='6px 0';
-            item.textContent = (i+1)+') id: '+(m.id||'-')+" | league: "+(m.league||'-')+"\n"+JSON.stringify(m, null, 2);
+            item.textContent = (i+1)+') id: '+(m.id||'-')+' | league: '+(m.league||'-')+'
+'+JSON.stringify(m, null, 2);
             preview.appendChild(item);
           });
         }
@@ -134,33 +175,85 @@
       }
     }
 
-    document.getElementById('btnSend').addEventListener('click', async ()=>{
-      responseEl.innerText = 'Enviando...';
+    function setStatus(txt){ statusEl.innerText = txt; }
+
+    async function sendToApi(){
+      responseEl.innerText = 'Enviando...'; setStatus('status: sending');
       const url = endpointEl.value.trim();
-      if(!url){ responseEl.innerText = 'Defina o endpoint primeiro.'; return; }
+      if(!url){ responseEl.innerText = 'Defina o endpoint primeiro.'; setStatus('status: error'); return; }
       let bodyTxt = jsonEl.value.trim();
-      if(!bodyTxt){ responseEl.innerText = 'JSON vazio.'; return; }
+      if(!bodyTxt){ responseEl.innerText = 'JSON vazio.'; setStatus('status: error'); return; }
       try{
         const bodyObj = JSON.parse(bodyTxt);
-        // you can modify headers here if your API requires an Auth token
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyObj)
-        });
+        const headers = { 'Content-Type': 'application/json' };
+        const token = apiTokenEl.value.trim();
+        if(token) headers['Authorization'] = token.startsWith('Bearer') ? token : `Bearer ${token}`;
+
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(bodyObj) });
         const text = await res.text();
-        // try to pretty-print JSON response
-        try{ responseEl.innerText = JSON.stringify(JSON.parse(text), null, 2); }
-        catch(e){ responseEl.innerText = text; }
+
+        if(!res.ok){
+          responseEl.innerText = `Erro HTTP ${res.status}: ${res.statusText}
+
+${text}`;
+          setStatus('status: error');
+          return;
+        }
+
+        let data;
+        try{ data = JSON.parse(text); }
+        catch(e){ responseEl.innerText = 'Resposta não-JSON:
+' + text; setStatus('status: error'); return; }
+
+        responseEl.innerText = JSON.stringify(data, null, 2);
+        setStatus('status: ok');
+        renderResults(data);
+
       }catch(err){
         responseEl.innerText = 'Erro: ' + err.message;
+        setStatus('status: error');
       }
+    }
+
+    function clearTable(){ resultsBody.innerHTML=''; resultsTable.style.display='none'; noResults.style.display='block'; }
+
+    function renderResults(data){
+      clearTable();
+      if(!data || !Array.isArray(data.results) || data.results.length===0) return;
+      noResults.style.display='none';
+      resultsTable.style.display='table';
+      data.results.forEach(r => {
+        const tr = document.createElement('tr');
+        const id = document.createElement('td'); id.textContent = r.id || '-';
+        const p = document.createElement('td'); p.textContent = (typeof r.probability==='number')? r.probability.toFixed(3) : '-';
+        const odds = document.createElement('td'); odds.textContent = (typeof r.probability==='number' && r.probability>0)? (1/r.probability).toFixed(3) : '-';
+        const reason = document.createElement('td'); reason.textContent = r.reason || r.msg || '-';
+        tr.appendChild(id); tr.appendChild(p); tr.appendChild(odds); tr.appendChild(reason);
+        resultsBody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('btnSend').addEventListener('click', sendToApi);
+    document.getElementById('btnValidate').addEventListener('click', ()=>renderPreview(true));
+    document.getElementById('btnCopy').addEventListener('click', ()=>{ navigator.clipboard.writeText(responseEl.innerText); });
+
+    document.getElementById('btnExport').addEventListener('click', ()=>{
+      const rows = Array.from(resultsBody.querySelectorAll('tr')).map(tr=>Array.from(tr.children).map(td=>td.textContent));
+      if(!rows.length){ alert('Nenhum resultado para exportar'); return; }
+      const csv = ['id,probability,odds,reason', ...rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""') }"").join(','))].join('
+');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'results.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
 
-    // live preview as user types (debounced)
-    let t;
-    jsonEl.addEventListener('input', ()=>{
-      clearTimeout(t); t = setTimeout(renderPreview, 400);
+    // live preview debounce
+    let t; jsonEl.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(renderPreview, 400); });
+
+    // load example on first open
+    window.addEventListener('load', ()=>{
+      // do not overwrite if user already has content
+      if(!jsonEl.value.trim()) document.getElementById('btnSample').click();
     });
   </script>
 </body>
